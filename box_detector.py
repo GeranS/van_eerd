@@ -8,6 +8,15 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device
 
 
+class DetectedBox():
+    def __init__(self, x, y, w, h, conf):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.conf = conf
+
+
 class BoxDetector():
     def __init__(self):
         self.device = select_device('')
@@ -39,6 +48,9 @@ class BoxDetector():
 
         detections = []
 
+        #x_scale_factor = image.shape[0] / im0.shape[0]
+        #y_scale_factor = image.shape[1] / im0.shape[1]
+
         for i, det in enumerate(prediction):
             gn = torch.tensor(image.shape)[[1, 0, 1, 0]]
 
@@ -46,8 +58,37 @@ class BoxDetector():
                 det[:, :4] = scale_coords(image.shape[2:], det[:, :4], im0.shape).round()
 
                 for *xyxy, conf, cls in reversed(det):
-                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1,4)) / gn).view(-1).tolist()
-                    detections.append((xywh, conf))
+                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()
+                    unscaled_x, unscaled_y, unscaled_w, unscaled_h = xywh[0], xywh[1], xywh[2], xywh[3]
+
+                    #x, y = unscaled_x / x_scale_factor, unscaled_y / y_scale_factor
+                    #w, h = unscaled_w / x_scale_factor, unscaled_h / y_scale_factor
+                    x, y = xyxy[0], xyxy[1]
+                    w = xyxy[2] - xyxy[0]
+                    h = xyxy[3] - xyxy[1]
+
+                    detections.append(DetectedBox(int(x), int(y), int(w), int(h), conf))
                     plot_one_box(xyxy, im0, label="Box " + str(conf))
 
         return detections, im0
+
+    def detections_to_grid(self, detections):
+        columns = []
+
+        sorted_by_x = sorted(detections, key=lambda det: det.x, reverse=True)
+
+        while len(sorted_by_x) != 0:
+            current_column = []
+            current_column_x = sorted_by_x[0].x
+            while True:
+                if len(sorted_by_x) > 0 and current_column_x - 30 < sorted_by_x[0].x < current_column_x + 30:
+                    current_column.append(sorted_by_x[0])
+                    sorted_by_x.remove(sorted_by_x[0])
+                    continue
+                break
+
+            current_column = sorted(current_column, key=lambda det: det.y, reverse=True)
+
+            columns.append(current_column)
+
+        return columns
