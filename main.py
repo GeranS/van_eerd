@@ -5,6 +5,7 @@ import numpy as np
 import json
 import codecs
 import sys
+import datetime
 
 from box_detector import BoxDetector
 from sideDetector import SideDetector
@@ -53,7 +54,7 @@ class Main:
 
             threshold_z = self.determine_top_layer_distance()
 
-            self.threshold_filter.set_option(rs.option.max_distance, threshold_z+0.05)
+            self.threshold_filter.set_option(rs.option.max_distance, threshold_z + 0.05)
             depth_frame = aligned_frames.get_depth_frame()
             depth_frame = self.threshold_filter.process(depth_frame)
             depth_colormap = np.asanyarray(self.colorizer.colorize(depth_frame).get_data())
@@ -66,30 +67,33 @@ class Main:
 
             for column in grid:
                 for det in column:
-                    center_x = det.x + int(det.w/2)
-                    center_y = det.y - int(det.h/2)
+                    center_x = det.x + int(det.w / 2)
+                    center_y = det.y + int(det.h / 2)
                     cv2.putText(im0, str(counter), (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1,
                                 (255, 120, 5), 2)
                     counter += 1
 
-            top_right_det = grid[0][len(grid[0])-1]
+            top_right_det = grid[0][len(grid[0]) - 1]
 
             x, y, w, h = top_right_det.x, top_right_det.y, top_right_det.w, top_right_det.h
 
             lt = (x, y)
             rb = (x + w, y + h)
 
-            #try:
+            # try:
             side = self.side_detector.detect_side(depth_colormap, lt, rb)
             cv2.putText(im0, "side: " + side, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 120, 5), 2)
-            #except:
+            # except:
             #    cv2.putText(im0, "Could not find side", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 120, 5), 2)
 
             cv2.imshow('box', cv2.resize(im0, (1600, 900)))
 
-            cv2.rectangle(depth_colormap, (x, y), (x+w, y+h), (255, 0, 255), 2)
+            cv2.rectangle(depth_colormap, (x, y), (x + w, y + h), (255, 0, 255), 2)
             cv2.imshow('depth', cv2.resize(depth_colormap, (1600, 900)))
-            cv2.waitKey(1)
+            key = cv2.waitKey(1)
+
+            if key == ord('s'):
+                cv2.imwrite('./saved_images/detection' + str(datetime.datetime.now()) + '.png', im0)
 
     def determine_top_layer_distance(self):
         frames = self.pipeline.wait_for_frames()
@@ -114,7 +118,7 @@ class Main:
                 smallest_most_common = m[0]
 
         closest_object_in_meters = float(smallest_most_common) * self.sensor.get_option(rs.option.depth_units)
-        return  closest_object_in_meters
+        return closest_object_in_meters
 
     def generate_distortion_matrix(self):
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
