@@ -1,6 +1,9 @@
 import socket
 from enum import Enum
 import _thread
+from functools import partial
+
+from conversion_service import ConversionService
 
 robot_client_ip = "192.168.0.4"
 robot_client_port = 22
@@ -38,20 +41,27 @@ class URService:
 
             # todo: switch case here
 
-    def send_command_to_ur(self, command):
+    def send_command_to_ur(self, command, params=None):
         switch = {
-            URCommand.grab_stack: self.__grab_stack,
-            URCommand.place_stack: self.__place_stack,
-            URCommand.safe_position: self.__safe_position
+            URCommand.grab_stack: partial(self.__grab_stack, params),
+            URCommand.safe_position: self.__safe_position,
+            URCommand.grab_sheet: self.__grab_sheet
         }
 
         function = switch.get(command)
         return function()
 
-    def __grab_stack(self):
-        pass
+    def __grab_stack(self, stack):
+        conversion_service = ConversionService.get_instance()
+        x, y, z = stack.x, stack.y, stack.z
+        x = x + stack.w/2
+        y = y + stack.h/2
+        x, y, z = conversion_service.convert_to_robot_coordinates(x, y, z)
 
-    def __place_stack(self):
+        self.robot_client.send("PICK".encode())
+        self.robot_client.send([x, y, z])
+
+    def __grab_sheet(self):
         pass
 
     def __safe_position(self):
@@ -60,5 +70,5 @@ class URService:
 
 class URCommand(Enum):
     grab_stack = 1
-    place_stack = 2
+    grab_sheet = 2
     safe_position = 3

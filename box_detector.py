@@ -14,7 +14,9 @@ class DetectedBox():
         self.y = y
         self.w = w
         self.h = h
+        self.z = 0
         self.conf = conf
+        self.grabbed = False
 
 
 class BoxDetector():
