@@ -9,14 +9,15 @@ from utils.torch_utils import select_device
 
 
 class DetectedBox():
-    def __init__(self, x, y, w, h, conf):
+    def __init__(self, x, y, w, h, conf, grabbed=False):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         self.z = 0
+        self.r = 0
         self.conf = conf
-        self.grabbed = False
+        self.grabbed = grabbed
 
 
 class BoxDetector():
@@ -82,10 +83,12 @@ class BoxDetector():
         while len(sorted_by_x) != 0:
             current_column = []
             current_column_x = sorted_by_x[0].x
+
             while True:
                 if len(sorted_by_x) > 0 and current_column_x - 30 < sorted_by_x[0].x < current_column_x + 30:
                     current_column.append(sorted_by_x[0])
                     sorted_by_x.remove(sorted_by_x[0])
+                    print("sorted_by_x length: " + str(len(sorted_by_x)))
                     continue
                 break
 

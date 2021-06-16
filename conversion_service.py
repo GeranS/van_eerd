@@ -17,7 +17,7 @@ class ConversionService:
         else:
             ConversionService.__instance = self
 
-            with open("volkerrail-dempers/calibration.json", "r") as c:
+            with open("./calibration.json", "r") as c:
                 calibration_json = json.load(c)
             c.close()
 

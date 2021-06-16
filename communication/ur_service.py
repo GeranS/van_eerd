@@ -18,13 +18,20 @@ class URService:
         host = socket.gethostname()
         self.robot_socket = socket.socket()
         self.robot_socket.bind((host, port))
+        self.robot_socket.listen(2)
 
-        self.robot_client = self.connect_to_ur()
+        self.robot_client = None
 
-        _thread.start_new_thread(self.listen_for_messages, ())
+        _thread.start_new_thread(self.connect_to_ur, ())
 
     def connect_to_ur(self):
-        pass
+        print("Waiting for UR connection...")
+        conn, _ = self.robot_socket.accept()
+        self.robot_client = conn
+
+        print("UR Connected.")
+
+        self.listen_for_messages()
 
     def listen_for_messages(self):
         while 1:
@@ -39,7 +46,8 @@ class URService:
 
             print("UR: " + str(message))
 
-            # todo: switch case here
+            if message == "DONE":
+                self.pick_logic.busy = False
 
     def send_command_to_ur(self, command, params=None):
         switch = {
@@ -59,7 +67,9 @@ class URService:
         x, y, z = conversion_service.convert_to_robot_coordinates(x, y, z)
 
         self.robot_client.send("PICK".encode())
-        self.robot_client.send([x, y, z])
+        print("Sent: PICK")
+        self.robot_client.send([x, y, z, stack.r])
+        print("Sent: {x:.4f}{y:.4f}{z:.4f}{r:.4f}".format(x=x, y=y, z=z, r=stack.r))
 
     def __grab_sheet(self):
         pass

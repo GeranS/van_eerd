@@ -5,7 +5,8 @@ import numpy as np
 import json
 import codecs
 import sys
-import datetime
+import time
+import _thread
 
 from box_detector import BoxDetector
 from communication.ur_service import URService, URCommand
@@ -19,7 +20,7 @@ class PickLogic:
 
         self.main = main
 
-        self.current_frame = None
+        self.current_frame = np.zeros((1,1))
 
         self.threshold_filter = rs.threshold_filter()
         self.threshold_filter.set_option(rs.option.max_distance, 4)
@@ -46,12 +47,13 @@ class PickLogic:
 
         self.box_detector = BoxDetector()
         self.side_detector = SideDetector()
-        self.ur_service = URService()
+        self.ur_service = URService(self)
 
         self.pile_grid = None
         self.busy = False
 
-        self.main_loop()
+        _thread.start_new_thread(self.main_loop, ())
+
 
     def get_pile_grid(self):
         frames = self.pipeline.wait_for_frames()
@@ -71,39 +73,76 @@ class PickLogic:
 
         grid = self.box_detector.detections_to_grid(detections)
 
+        self.current_frame = im0
+
+        if grid is None or len(grid) == 0:
+            return None
+
         distance = self.determine_top_layer_distance()
+        top_right_det = grid[0][len(grid[0]) - 1]
+        lt = (top_right_det.x, top_right_det.y)
+        rb = (top_right_det.x + top_right_det.w, top_right_det.y + top_right_det.h)
+        side = self.side_detector.detect_side(depth_colormap, lt, rb)
+        rotation = 0
+        if side == "e":
+            rotation = 90
 
         col = 0
-        while col < len(self.pile_grid):
+        while col < len(grid):
             row = 0
-            while row < self.pile_grid[col]:
-                self.pile_grid[col][row].z = distance
+            while row < len(grid[col]):
+                grid[col][row].z = distance
+                grid[col][row].r = rotation
+                row += 1
+            col += 1
 
         return grid
 
+    def get_frame_without_detection(self):
+        frames = self.pipeline.wait_for_frames()
+
+        aligned_frames = self.align.process(frames)
+        colour_frame = aligned_frames.get_color_frame()
+        colour_frame = np.asanyarray(colour_frame.get_data())
+
+        return colour_frame
+
     def main_loop(self):
         while 1:
-            if self.main.state == 0 or self.busy:
+            if self.main.state.get() == "paused" or self.busy:
+                time.sleep(0.5)
+                if self.main.state.get() == "paused":
+                    print("Paused...")
+                    self.current_frame = self.get_frame_without_detection()
+
+                if self.busy:
+                    print("Busy...")
                 continue
 
             if self.pile_grid is None:
+                print("Getting new grid...")
                 self.pile_grid = self.get_pile_grid()
                 continue
 
             if len(self.pile_grid) == 0:
+                print("Grid empty, grabbing sheet...")
                 self.ur_service.send_command_to_ur(URCommand.grab_sheet)
                 self.busy = True
                 continue
 
             col = 0
+            print(len(self.pile_grid))
             while col < len(self.pile_grid):
                 row = 0
-                while row < self.pile_grid[col]:
+                while row < len(self.pile_grid[col]):
                     if self.pile_grid[col][row].grabbed is False:
+                        print("Grabbing stack...")
                         self.ur_service.send_command_to_ur(URCommand.grab_stack, self.pile_grid[col][row])
                         self.pile_grid[col][row].grabbed = True
                         self.busy = True
                         continue
+                    row += 1
+                col += 1
 
     def determine_top_layer_distance(self):
         frames = self.pipeline.wait_for_frames()
