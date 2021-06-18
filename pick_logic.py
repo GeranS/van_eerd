@@ -50,17 +50,65 @@ class PickLogic:
         self.ur_service = URService(self)
 
         self.pile_grid = None
+        self.side = None
         self.busy = False
 
         _thread.start_new_thread(self.main_loop, ())
 
+    def get_pile_grid_and_set_as_active(self):
+        grid, side = self.get_pile_grid()
+        self.pile_grid = grid
+        self.side = side
+        print("Manual mode get pile grid")
+
+    def determine_stack_to_grab(self, grid, side):
+        print("Determining pick, side: " + str(side))
+        if side == "n":
+            col = 0
+            row = 0
+            while 1:
+                if row > 10:
+                    return None
+                while col < len(grid):
+                    sorted_by_y = sorted(grid[col], key=lambda det: det.y, reverse=True)
+                    if sorted_by_y[row].grabbed is False and len(sorted_by_y) >= row:
+                        return sorted_by_y[row]
+                    col += 1
+                row += 1
+        elif side == "w":
+            col = 0
+            while col < len(grid):
+                row = 0
+                while row < len(grid[col]):
+                    if grid[col][row].grabbed is False:
+                        return grid[col][row]
+                    row += 1
+                col += 1
+
+    def grab_one_stack(self):
+        print("Manual mode grab stack")
+        if self.busy:
+            print("Could not grab stack, robot is busy")
+            return
+
+        stack = self.determine_stack_to_grab(self.pile_grid, self.side)
+
+        self.ur_service.send_command_to_ur(URCommand.grab_stack, stack)
+        #self.busy = True
 
     def get_pile_grid(self):
         frames = self.pipeline.wait_for_frames()
 
+        loaded_object = json.loads(codecs.open('calib.json', 'r', encoding='utf-8').read())
+        mtx = np.asarray(loaded_object["mtx"])
+        dist = np.asarray(loaded_object["dist"])
+        newCameraMtx = np.asarray(loaded_object["newmtx"])
+        roi = loaded_object["roi"]
+
         aligned_frames = self.align.process(frames)
         colour_frame = aligned_frames.get_color_frame()
         colour_frame = np.asanyarray(colour_frame.get_data())
+        colour_frame = cv2.undistort(colour_frame, mtx, dist, None, newCameraMtx)
 
         threshold_z = self.determine_top_layer_distance()
 
@@ -82,7 +130,7 @@ class PickLogic:
         top_right_det = grid[0][len(grid[0]) - 1]
         lt = (top_right_det.x, top_right_det.y)
         rb = (top_right_det.x + top_right_det.w, top_right_det.y + top_right_det.h)
-        side = self.side_detector.detect_side(depth_colormap, lt, rb)
+        side = self.side_detector.detect_side(depth_colormap, lt, rb, side1='n', side2='w')
         rotation = 0
         if side == "e":
             rotation = 90
@@ -96,7 +144,26 @@ class PickLogic:
                 row += 1
             col += 1
 
-        return grid
+        return grid, side
+
+    def get_detection_visuals(self):
+        frames = self.pipeline.wait_for_frames()
+
+        aligned_frames = self.align.process(frames)
+        colour_frame = aligned_frames.get_color_frame()
+        colour_frame = np.asanyarray(colour_frame.get_data())
+
+        threshold_z = self.determine_top_layer_distance()
+
+        self.threshold_filter.set_option(rs.option.max_distance, threshold_z + 0.05)
+        depth_frame = aligned_frames.get_depth_frame()
+        depth_frame = self.threshold_filter.process(depth_frame)
+        depth_colormap = np.asanyarray(self.colorizer.colorize(depth_frame).get_data())
+
+        _, im0 = self.box_detector.detect_boxes(colour_frame.copy())
+
+        return im0
+
 
     def get_frame_without_detection(self):
         frames = self.pipeline.wait_for_frames()
@@ -109,6 +176,18 @@ class PickLogic:
 
     def main_loop(self):
         while 1:
+            if self.main.state.get() == "matrix":
+                self.generate_distortion_matrix()
+
+            if self.main.state.get() == "manual":
+                time.sleep(1)
+                continue
+
+            if self.main.state.get() == "test":
+                im0 = self.get_detection_visuals()
+                self.current_frame = im0
+                continue
+
             if self.main.state.get() == "paused" or self.busy:
                 time.sleep(0.5)
                 if self.main.state.get() == "paused":

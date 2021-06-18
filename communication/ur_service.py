@@ -53,7 +53,7 @@ class URService:
         switch = {
             URCommand.grab_stack: partial(self.__grab_stack, params),
             URCommand.safe_position: self.__safe_position,
-            URCommand.grab_sheet: self.__grab_sheet
+            URCommand.grab_sheet: partial(self.__grab_sheet, params)
         }
 
         function = switch.get(command)
@@ -65,17 +65,19 @@ class URService:
         x = x + stack.w/2
         y = y + stack.h/2
         x, y, z = conversion_service.convert_to_robot_coordinates(x, y, z)
+        stack.grabbed = True
 
-        self.robot_client.send("PICK".encode())
+        #self.robot_client.send("PICK".encode())
         print("Sent: PICK")
-        self.robot_client.send([x, y, z, stack.r])
-        print("Sent: {x:.4f}{y:.4f}{z:.4f}{r:.4f}".format(x=x, y=y, z=z, r=stack.r))
+        #self.robot_client.send([x, y, z, stack.r])
+        print("Sent: {x:.4f},{y:.4f},{z:.4f},{r:.4f}".format(x=x, y=y, z=z, r=stack.r))
 
     def __grab_sheet(self):
         pass
 
     def __safe_position(self):
-        pass
+        self.robot_client.send("SAFE".encode())
+        print("Sent: SAFE")
 
 
 class URCommand(Enum):
