@@ -24,7 +24,7 @@ class BoxDetector():
     def __init__(self):
         self.device = select_device('')
         self.half = self.device.type != 'cpu'
-        self.weights_url = './weights/last.pt'
+        self.weights_url = './weights/final dataset.pt'
         self.model = attempt_load(self.weights_url, map_location=self.device)
         self.stride = int(self.model.stride.max())
         self.image_size = 640
