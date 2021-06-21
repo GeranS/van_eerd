@@ -63,17 +63,28 @@ class URService:
         conversion_service = ConversionService.get_instance()
         x, y, z = stack.x, stack.y, stack.z
         x = x + stack.w/2
-        y = y + stack.h/2
+        y = y + (stack.h/2)
         x, y, z = conversion_service.convert_to_robot_coordinates(x, y, z)
         stack.grabbed = True
+
+        x = x*1000
+        y = y*1000
+        z = z*1000
 
         #self.robot_client.send("PICK".encode())
         print("Sent: PICK")
         #self.robot_client.send([x, y, z, stack.r])
-        print("Sent: {x:.4f},{y:.4f},{z:.4f},{r:.4f}".format(x=x, y=y, z=z, r=stack.r))
+        print("Sent: {x:.4f},{y:.4f},{z:.4f},{r:.4f}".format(x=x, y=y-0.015, z=z, r=stack.r))
 
-    def __grab_sheet(self):
-        pass
+    def __grab_sheet(self, z):
+        conversion_service = ConversionService.get_instance()
+        z = conversion_service.camera_z_to_robot_z(z)
+
+        #self.robot_client.send("SHEET".encode())
+        print("Sent: SHEET")
+        #self.robot_client.send(z)
+        print("Sent: {z:.4f}".format(z=z))
+
 
     def __safe_position(self):
         self.robot_client.send("SAFE".encode())

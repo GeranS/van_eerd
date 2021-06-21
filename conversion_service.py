@@ -52,6 +52,10 @@ class ConversionService:
         self.x_inversion = calibration_json['x_inversion']
         self.y_inversion = calibration_json['y_inversion']
 
+    def camera_z_to_robot_z(self, z):
+        camera_height = self.calibration_pixel_coordinates_camera[2] + self.calibration_coordinates_robot[2]
+        new_z = camera_height - z
+        return new_z
 
     # converts pixels at a given distance to meters
     # makes use of the calibration data

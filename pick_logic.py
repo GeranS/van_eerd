@@ -20,7 +20,7 @@ class PickLogic:
 
         self.main = main
 
-        self.current_frame = np.zeros((1,1))
+        self.current_frame = np.zeros((1, 1))
 
         self.threshold_filter = rs.threshold_filter()
         self.threshold_filter.set_option(rs.option.max_distance, 4)
@@ -56,7 +56,14 @@ class PickLogic:
         _thread.start_new_thread(self.main_loop, ())
 
     def get_pile_grid_and_set_as_active(self):
-        grid, side = self.get_pile_grid()
+        result = self.get_pile_grid()
+
+        if result is None:
+            print("Couldn't find anything.")
+            return
+
+        grid, side = result
+
         self.pile_grid = grid
         self.side = side
         print("Manual mode get pile grid")
@@ -93,8 +100,12 @@ class PickLogic:
 
         stack = self.determine_stack_to_grab(self.pile_grid, self.side)
 
+        if stack is None:
+            print("Couldn't find stack to grab")
+            return
+
         self.ur_service.send_command_to_ur(URCommand.grab_stack, stack)
-        #self.busy = True
+        # self.busy = True
 
     def get_pile_grid(self):
         frames = self.pipeline.wait_for_frames()
@@ -123,8 +134,11 @@ class PickLogic:
 
         self.current_frame = im0
 
-        if grid is None or len(grid) == 0:
+        if grid is None:
             return None
+
+        if len(grid) == 0:
+            return grid
 
         distance = self.determine_top_layer_distance()
         top_right_det = grid[0][len(grid[0]) - 1]
@@ -164,6 +178,29 @@ class PickLogic:
 
         return im0
 
+    def manual_grab_sheet(self):
+        if self.pile_grid is None or len(self.pile_grid) == 0 or self.have_all_stacks_been_grabbed():
+            distance = self.determine_top_layer_distance()
+            self.ur_service.send_command_to_ur(URCommand.grab_sheet, distance)
+            self.busy = True
+            print("Grabbing sheet")
+        else:
+            print("There are still stacks left to grab")
+
+    def have_all_stacks_been_grabbed(self):
+        if self.pile_grid is None or len(self.pile_grid) == 0:
+            return True
+
+        col = 0
+        while col < len(self.pile_grid):
+            row = 0
+            while row < len(self.pile_grid[col]):
+                if self.pile_grid[col][row].grabbed is False:
+                    return False
+                row += 1
+            col += 1
+
+        return True
 
     def get_frame_without_detection(self):
         frames = self.pipeline.wait_for_frames()
@@ -198,15 +235,16 @@ class PickLogic:
                     print("Busy...")
                 continue
 
-            if self.pile_grid is None:
+            if self.pile_grid is None or self.have_all_stacks_been_grabbed():
                 print("Getting new grid...")
-                self.pile_grid = self.get_pile_grid()
+                self.pile_grid, self.side = self.get_pile_grid()
                 continue
 
             if len(self.pile_grid) == 0:
                 print("Grid empty, grabbing sheet...")
                 self.ur_service.send_command_to_ur(URCommand.grab_sheet)
                 self.busy = True
+                self.pile_grid = None
                 continue
 
             col = 0
@@ -294,4 +332,3 @@ class PickLogic:
                 # Exit calibration
             elif key == 27:
                 sys.exit()
-

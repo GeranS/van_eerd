@@ -93,7 +93,7 @@ class Main:
         button_grab_stack = tkinter.Button(master=self.manual_mode_frame, text="Grab Stack", width=20, command=self.pick_logic.grab_one_stack)
         button_grab_stack.pack(anchor="ne")
 
-        button_grab_sheet = tkinter.Button(master=self.manual_mode_frame, text="Grab Sheet", width=20)
+        button_grab_sheet = tkinter.Button(master=self.manual_mode_frame, text="Grab Sheet", width=20, command=self.pick_logic.manual_grab_sheet)
         button_grab_sheet.pack(anchor="ne")
 
         button_get_new_grid = tkinter.Button(master=self.manual_mode_frame, text="Get New Grid", width=20, command=self.pick_logic.get_pile_grid_and_set_as_active)
