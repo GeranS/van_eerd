@@ -113,13 +113,12 @@ class PickLogic:
         loaded_object = json.loads(codecs.open('calib.json', 'r', encoding='utf-8').read())
         mtx = np.asarray(loaded_object["mtx"])
         dist = np.asarray(loaded_object["dist"])
-        newCameraMtx = np.asarray(loaded_object["newmtx"])
-        roi = loaded_object["roi"]
+        new_camera_mtx = np.asarray(loaded_object["newmtx"])
 
         aligned_frames = self.align.process(frames)
         colour_frame = aligned_frames.get_color_frame()
         colour_frame = np.asanyarray(colour_frame.get_data())
-        colour_frame = cv2.undistort(colour_frame, mtx, dist, None, newCameraMtx)
+        colour_frame = cv2.undistort(colour_frame, mtx, dist, None, new_camera_mtx)
 
         threshold_z = self.determine_top_layer_distance()
 
@@ -144,9 +143,9 @@ class PickLogic:
         top_right_det = grid[0][len(grid[0]) - 1]
         lt = (top_right_det.x, top_right_det.y)
         rb = (top_right_det.x + top_right_det.w, top_right_det.y + top_right_det.h)
-        side = self.side_detector.detect_side(depth_colormap, lt, rb, side1='n', side2='w')
+        side = self.side_detector.detect_side(depth_colormap, lt, rb, side1='w', side2='n')
         rotation = 0
-        if side == "e":
+        if side == "n":
             rotation = 90
 
         col = 0
@@ -170,9 +169,6 @@ class PickLogic:
         threshold_z = self.determine_top_layer_distance()
 
         self.threshold_filter.set_option(rs.option.max_distance, threshold_z + 0.05)
-        depth_frame = aligned_frames.get_depth_frame()
-        depth_frame = self.threshold_filter.process(depth_frame)
-        depth_colormap = np.asanyarray(self.colorizer.colorize(depth_frame).get_data())
 
         _, im0 = self.box_detector.detect_boxes(colour_frame.copy())
 

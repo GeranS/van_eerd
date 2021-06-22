@@ -2,7 +2,7 @@ import socket
 from enum import Enum
 import _thread
 from functools import partial
-
+import time
 from conversion_service import ConversionService
 
 robot_client_ip = "192.168.0.4"
@@ -62,29 +62,30 @@ class URService:
     def __grab_stack(self, stack):
         conversion_service = ConversionService.get_instance()
         x, y, z = stack.x, stack.y, stack.z
-        x = x + stack.w/2
-        y = y + (stack.h/2)
+        x = x + stack.w / 2
+        y = y + (stack.h / 2)
         x, y, z = conversion_service.convert_to_robot_coordinates(x, y, z)
         stack.grabbed = True
 
-        x = x*1000
-        y = y*1000
-        z = z*1000
+        x = x * 1000
+        y = y * 1000
+        z = z * 1000
 
-        #self.robot_client.send("PICK".encode())
+        self.robot_client.send("PICK".encode())
         print("Sent: PICK")
-        #self.robot_client.send([x, y, z, stack.r])
-        print("Sent: {x:.4f},{y:.4f},{z:.4f},{r:.4f}".format(x=x, y=y-0.015, z=z, r=stack.r))
+        time.sleep(0.1)
+        message_to_send = "({x:.4f},{y:.4f},{z:.4f},{r:.4f})".format(x=x, y=y - 15, z=z, r=stack.r)
+        self.robot_client.send(message_to_send.encode())
+        print("Sent: {x:.4f},{y:.4f},{z:.4f},{r:.4f}".format(x=x, y=y - 0.015, z=z, r=stack.r))
 
     def __grab_sheet(self, z):
         conversion_service = ConversionService.get_instance()
         z = conversion_service.camera_z_to_robot_z(z)
 
-        #self.robot_client.send("SHEET".encode())
-        print("Sent: SHEET")
-        #self.robot_client.send(z)
+        self.robot_client.send("PAPER".encode())
+        print("Sent: PAPER")
+        self.robot_client.send(z)
         print("Sent: {z:.4f}".format(z=z))
-
 
     def __safe_position(self):
         self.robot_client.send("SAFE".encode())
