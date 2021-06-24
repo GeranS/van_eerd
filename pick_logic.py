@@ -243,19 +243,9 @@ class PickLogic:
                 self.pile_grid = None
                 continue
 
-            col = 0
-            print(len(self.pile_grid))
-            while col < len(self.pile_grid):
-                row = 0
-                while row < len(self.pile_grid[col]):
-                    if self.pile_grid[col][row].grabbed is False:
-                        print("Grabbing stack...")
-                        self.ur_service.send_command_to_ur(URCommand.grab_stack, self.pile_grid[col][row])
-                        self.pile_grid[col][row].grabbed = True
-                        self.busy = True
-                        continue
-                    row += 1
-                col += 1
+            stack = self.determine_stack_to_grab(self.pile_grid, self.side)
+            self.busy = True
+            self.ur_service.send_command_to_ur(URCommand.grab_stack, stack)
 
     def determine_top_layer_distance(self):
         frames = self.pipeline.wait_for_frames()
@@ -271,7 +261,7 @@ class PickLogic:
         depth_image = depth_image[depth_image != 0]
 
         counter = collections.Counter(depth_image)
-        most_common = counter.most_common(500)
+        most_common = counter.most_common(100)
 
         smallest_most_common = 10000000
 

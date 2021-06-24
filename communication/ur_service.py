@@ -31,6 +31,8 @@ class URService:
 
         print("UR Connected.")
 
+        self.send_command_to_ur(URCommand.safe_position)
+
         self.listen_for_messages()
 
     def listen_for_messages(self):
@@ -74,9 +76,9 @@ class URService:
         self.robot_client.send("PICK".encode())
         print("Sent: PICK")
         time.sleep(0.1)
-        message_to_send = "({x:.4f},{y:.4f},{z:.4f},{r:.4f})".format(x=x, y=y - 15, z=z, r=stack.r)
+        message_to_send = "({x:.4f},{y:.4f},{z:.4f},{r:.4f})".format(x=x, y=y, z=z, r=stack.r)
         self.robot_client.send(message_to_send.encode())
-        print("Sent: {x:.4f},{y:.4f},{z:.4f},{r:.4f}".format(x=x, y=y - 0.015, z=z, r=stack.r))
+        print(message_to_send)
 
     def __grab_sheet(self, z):
         conversion_service = ConversionService.get_instance()

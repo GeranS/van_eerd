@@ -2,8 +2,8 @@
   "calibration_object_length_in_meters": 0.2,
   "calibration_object_length_in_pixels": 425,
   "calibration_object_distance_in_meters": 0.653,
-  "calibration_coordinates_robot": [0.793, 0.288, 0.070],
-  "calibration_pixel_coordinates_camera": [225, 817, 0.622],
+  "calibration_coordinates_robot": [0.793, 0.260, 0.070],
+  "calibration_pixel_coordinates_camera": [225, 750, 0.622],
   "x_inversion": false,
   "y_inversion": false,
   "quarter_turn": true
