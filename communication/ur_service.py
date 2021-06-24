@@ -76,7 +76,7 @@ class URService:
         self.robot_client.send("PICK".encode())
         print("Sent: PICK")
         time.sleep(0.1)
-        message_to_send = "({x:.4f},{y:.4f},{z:.4f},{r:.4f})".format(x=x, y=y, z=z, r=stack.r)
+        message_to_send = "({x:.4f},{y:.4f},{z:.4f},{r:.4f})".format(x=x, y=y, z=z, r=90.0)
         self.robot_client.send(message_to_send.encode())
         print(message_to_send)
 
